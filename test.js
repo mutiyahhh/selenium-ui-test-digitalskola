@@ -1,51 +1,71 @@
-const { Builder, By, Key, until } = require("selenium-webdriver");
-const chrome = require("selenium-webdriver/chrome"); // ⬅️ Tambahkan ini!
+import { Builder, By, Key, until } from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome.js";
+import firefox from "selenium-webdriver/firefox.js";
+import assert from "assert";
+
+// Pilihan browser (Chrome atau Firefox)
+const BROWSER = "chrome"; // Ganti sesuai kebutuhan
+
+// Deklarasi options
+let options;
+
+// Konfigurasi browser options
+if (BROWSER === "chrome") {
+  options = new chrome.Options(); // Menggunakan Chrome
+} else if (BROWSER === "firefox") {
+  options = new firefox.Options();
+  options.addArguments('--headless'); // Menambahkan opsi headless untuk Firefox
+}
 
 async function runTest() {
-    //melakukan pencarian di google
-    let driver = await new Builder()
-        .forBrowser("chrome")
-        .setChromeOptions(new chrome.Options().addArguments("--ignore-certificate-errors")) // ✅ Perbaikan di sini
-        .build();
-    
+  let driver = await new Builder()
+    .forBrowser(BROWSER)
+    .setChromeOptions(options)
+    .setFirefoxOptions(options)
+    .build();
 
-try {
-        // Login
-        await driver.get("https://www.saucedemo.com/");
-        //simulate user behaviour
-        await driver.findElement(By.id("user-name")).sendKeys("standard_user");
-        await driver.findElement(By.id("password")).sendKeys("secret_sauce", Key.RETURN);
-        await driver.wait(until.urlContains("inventory"), 10000);
-        console.log("✅ Login berhasil, berada di dashboard.");
+  try {
+    console.log("🚀 Memulai pengujian pada " + BROWSER);
 
-        // Validate Dashboard
-        let title = await driver.findElement(By.className("title")).getText();
-        if (title === "Products") {
-            console.log("✅ Berhasil masuk ke dashboard.");
-        } else {
-            console.log("❌ Gagal masuk ke dashboard.");
-        }
+    // Test Hooks: Before Test
+    console.log("🔹 Before Test: Buka halaman login");
+    await driver.get("https://www.saucedemo.com/");
 
-        // Add Item to Cart
-        await driver.findElement(By.className("btn_inventory")).click();
-        await driver.findElement(By.className("shopping_cart_link")).click();
-        console.log("✅ Item berhasil ditambahkan ke cart.");
+    // Step 1: Login
+    console.log("🔹 Step 1: User melakukan login");
+    await driver.findElement(By.id("user-name")).sendKeys("standard_user");
+    await driver.findElement(By.id("password")).sendKeys("secret_sauce", Key.RETURN);
+    await driver.wait(until.urlContains("inventory"), 5000);
+    console.log("✅ Login sukses, berada di dashboard");
 
-        // Validate Item di Cart
-        let cartItem = await driver.findElement(By.className("inventory_item_name")).getText();
-        if (cartItem) {
-            console.log("✅ Item ada di cart.");
-        } else {
-            console.log("❌ Item tidak ada di cart.");
-        }
+    // Step 2: Validate Dashboard
+    let title = await driver.findElement(By.className("title")).getText();
+    assert.strictEqual(title, "Products", "Gagal masuk ke dashboard");
+    console.log("✅ Validasi dashboard sukses");
 
-    } catch (error) {
-        console.error("🚨 Error:", error);
-    } finally {
-        // Tutup browser
-        await driver.quit();
-    }
+    // Step 3: Tambah Item ke Cart
+    console.log("🔹 Step 3: Menambahkan item ke cart");
+    await driver.findElement(By.className("btn_inventory")).click();
+    await driver.findElement(By.className("shopping_cart_link")).click();
+    console.log("✅ Item berhasil ditambahkan ke cart");
+
+    // Step 4: Validasi Item di Cart
+    console.log("🔹 Step 4: Validasi item di cart");
+    let cartItem = await driver.findElement(By.className("inventory_item_name")).getText();
+    assert.ok(cartItem, "Item tidak ditemukan di cart");
+    console.log("✅ Item ada di cart");
+  } catch (error) {
+    console.error("🚨 Terjadi kesalahan:", error);
+  } finally {
+    // Test Hooks: After Test
+    console.log("🔹 After Test: Menutup browser");
+    await driver.quit();
+  }
 }
 
 // Jalankan test
+const desc = "Test Login dan Tambah Item ke Cart di SauceDemo";
+console.log("\n==============================");
+console.log('📌 ${ desc }');
+console.log("==============================\n");
 runTest();
